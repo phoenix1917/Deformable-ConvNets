@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2017 Microsoft
@@ -27,6 +29,12 @@ def show_boxes(im, dets, classes, scale = 1.0):
                 plt.gca().text(bbox[0], bbox[1],
                                '{:s} {:.3f}'.format(cls_name, score),
                                bbox=dict(facecolor=color, alpha=0.5), fontsize=9, color='white')
+
+    # 显示图像
     plt.show()
+
+    # 保存
+
+
     return im
 

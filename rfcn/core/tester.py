@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2016 by Contributors
@@ -150,7 +152,7 @@ def im_detect(predictor, data_batch, data_names, scales, cfg):
     return scores_all, pred_boxes_all, data_dict_all
 
 
-def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=None, ignore_cache=True):
+def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=None, ignore_cache=True):
     """
     wrapper for calculating offline validation for faster data analysis
     in this example, all threshold are set by hand
@@ -272,6 +274,8 @@ def vis_all_detection(im_array, detections, class_names, scale, cfg, threshold=1
             plt.gca().text(bbox[0], bbox[1] - 2,
                            '{:s} {:.3f}'.format(name, score),
                            bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
+
+
     plt.show()
 
 

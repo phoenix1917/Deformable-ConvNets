@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2016 by Contributors
@@ -19,13 +21,14 @@ from config.config import config, update_config
 def parse_args():
     parser = argparse.ArgumentParser(description='Test a R-FCN network')
     # general
-    parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
+    parser.add_argument('--cfg', help='experiment configure file name', required=True,type=str)
 
     args, rest = parser.parse_known_args()
     update_config(args.cfg)
 
     # rcnn
     parser.add_argument('--vis', help='turn on visualization', action='store_true')
+    #parser.add_argument('--vis', help='turn on visualization', default=True)
     parser.add_argument('--ignore_cache', help='ignore cached results boxes', action='store_true')
     parser.add_argument('--thresh', help='valid detection threshold', default=1e-3, type=float)
     parser.add_argument('--shuffle', help='shuffle data on visualization', action='store_true')
@@ -47,9 +50,21 @@ def main():
 
     logger, final_output_path = create_logger(config.output_path, args.cfg, config.dataset.test_image_set)
 
-    test_rcnn(config, config.dataset.dataset, config.dataset.test_image_set, config.dataset.root_path, config.dataset.dataset_path,
-              ctx, os.path.join(final_output_path, '..', '_'.join([iset for iset in config.dataset.image_set.split('+')]), config.TRAIN.model_prefix), config.TEST.test_epoch,
-              args.vis, args.ignore_cache, args.shuffle, config.TEST.HAS_RPN, config.dataset.proposal, args.thresh, logger=logger, output_path=final_output_path)
+    test_rcnn(config, config.dataset.dataset,
+              config.dataset.test_image_set,
+              config.dataset.root_path,
+              config.dataset.dataset_path,
+              ctx,
+              os.path.join(final_output_path, '..', '_'.join([iset for iset in config.dataset.image_set.split('+')]), config.TRAIN.model_prefix),
+              config.TEST.test_epoch,
+              args.vis,
+              args.ignore_cache,
+              args.shuffle,
+              config.TEST.HAS_RPN,
+              config.dataset.proposal,
+              args.thresh,
+              logger=logger,
+              output_path=final_output_path)
 
 if __name__ == '__main__':
     main()

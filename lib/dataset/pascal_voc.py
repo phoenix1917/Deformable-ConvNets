@@ -42,11 +42,39 @@ class PascalVOC(IMDB):
         self.data_path = os.path.join(devkit_path, 'VOC' + year)
 
         self.classes = ['__background__',  # always index 0
-                        'aeroplane', 'bicycle', 'bird', 'boat',
-                        'bottle', 'bus', 'car', 'cat', 'chair',
-                        'cow', 'diningtable', 'dog', 'horse',
-                        'motorbike', 'person', 'pottedplant',
-                        'sheep', 'sofa', 'train', 'tvmonitor']
+                        '100000000',  # ship
+                        '100100000',  # aircraft_carrier
+                        '100200000',  # warcraft
+                        '100300000',  # merchant_ship
+                        '100400000',  # submarine
+                        '100500000',  # boat
+                        '100100001',  # nimitz_class_aircraft_carrier
+                        '100100002',  # enterprise_class_aircraft_carrier
+                        '100100003',  # kitty_hawk_class_aircraft_carrier
+                        '100100004',  # admiral_kuznetsov_aircraft_carrier
+                        '100100005',  # tarawa_class_amphibious_assault_ship
+                        '100100006',  # ford_class_aircraft_carriers
+                        '100100007',  # midway_class_aircraft_carrier
+                        '100100008',  # invincible_class_aircraft_carrier
+                        '100200001',  # arleigh_burke_class_destroyers
+                        '100200002',  # whidbey_island_class_landing_craft
+                        '100200003',  # perry_class_frigate
+                        '100200004',  # sanantonio_class_amphibious_transport_dock
+                        '100200005',  # ticonderoga_class_cruiser
+                        '100200006',  # abukuma_class_destroyer_escort
+                        '100200007',  # austen_class_amphibious_transport_dock
+                        '100200008',  # uss_blue_ridge_LCC_19
+                        '100200009',  # commander_ship_round_head_ox_tail
+                        '100200010',  # lute_style_warcraft
+                        '100200011',  # medical_ship
+                        '100300001',  # container_ship
+                        '100300002',  # car_carrier_round
+                        '100300003',  # hovercraft
+                        '100300004',  # yacht
+                        '100300005',  # cargo_ship
+                        '100300006',  # cruise_ship
+                        '100300007']  # car_carrier_one_side_flat
+
         self.num_classes = len(self.classes)
         self.image_set_index = self.load_image_set_index()
         self.num_images = len(self.image_set_index)
@@ -75,7 +103,13 @@ class PascalVOC(IMDB):
         :param index: index of a specific image
         :return: full path of this image
         """
-        image_file = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
+
+        # for HRSC bmp images:
+        image_file = os.path.join(self.data_path, 'JPEGImages', index + '.bmp')
+
+        # for VOC jpeg images:
+        # image_file = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
+
         assert os.path.exists(image_file), 'Path does not exist: {}'.format(image_file)
         return image_file
 

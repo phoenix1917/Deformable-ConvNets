@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2017 Microsoft
@@ -9,6 +11,8 @@ import os
 import logging
 import time
 
+
+# 创建日志文件，并建立输出目录结构
 def create_logger(root_output_path, cfg, image_set):
     # set up logger
     if not os.path.exists(root_output_path):
@@ -27,6 +31,7 @@ def create_logger(root_output_path, cfg, image_set):
 
     log_file = '{}_{}.log'.format(cfg_name, time.strftime('%Y-%m-%d-%H-%M'))
     head = '%(asctime)-15s %(message)s'
+    # 用默认Formatter为日志系统建立一个StreamHandler，设置基础配置并加到root logger中
     logging.basicConfig(filename=os.path.join(final_output_path, log_file), format=head)
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)

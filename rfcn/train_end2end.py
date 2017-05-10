@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2016 by Contributors
@@ -17,24 +19,6 @@ import os
 import sys
 from config.config import config, update_config
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train R-FCN network')
-    # general
-    parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
-
-    args, rest = parser.parse_known_args()
-    # update config
-    update_config(args.cfg)
-
-    # training
-    parser.add_argument('--frequent', help='frequency of logging', default=config.default.frequent, type=int)
-    args = parser.parse_args()
-    return args
-
-args = parse_args()
-curr_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(curr_path, '../external/mxnet', config.MXNET_VERSION))
-
 import shutil
 import numpy as np
 import mxnet as mx
@@ -49,9 +33,41 @@ from utils.load_model import load_param
 from utils.PrefetchingIter import PrefetchingIter
 from utils.lr_scheduler import WarmupMultiFactorScheduler
 
+# 设置系统信息
+os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '1'  # 用于卷积层的cudnn_tune的默认值。对于单GPU，设为1可以提升10%-15%的速度。
+os.environ['PYTHONUNBUFFERED'] = '1'  # 提供输出缓冲，保证stdout显示顺序
+# os.environ['MXNET_ENABLE_GPU_P2P'] = '0'  # 是否使用P2P通信（需要显卡支持）
+
+
+# 定义脚本参数
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train R-FCN network')
+    # general
+    parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
+    args, rest = parser.parse_known_args()
+    # update config
+    update_config(args.cfg)
+
+    # training
+    parser.add_argument('--frequent', help='frequency of logging', default=config.default.frequent, type=int)
+    args = parser.parse_args()
+    return args
+
+# 传入脚本参数
+args = parse_args()
+
+# 将$DCN_ROOT/external/mxnet加入系统PATH
+# 若使用其他版本的mxnet，在config中设置MXNET_VERSION参数。
+curr_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(curr_path, '../external/mxnet', config.MXNET_VERSION))
+
 
 def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, lr_step):
+
+    # 生成日志和输出目录，用于保存训练过程的输出
     logger, final_output_path = create_logger(config.output_path, args.cfg, config.dataset.image_set)
+
+    # 根据前缀生成最终输出路径（主方法调用时，前缀由config.TRAIN.model_prefix传入）
     prefix = os.path.join(final_output_path, prefix)
 
     # load symbol
@@ -76,15 +92,18 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     roidb = merge_roidb(roidbs)
     roidb = filter_roidb(roidb, config)
     # load training data
-    train_data = AnchorLoader(feat_sym, roidb, config, batch_size=input_batch_size, shuffle=config.TRAIN.SHUFFLE, ctx=ctx,
+    train_data = AnchorLoader(feat_sym, roidb, config, batch_size=input_batch_size, shuffle=config.TRAIN.SHUFFLE,
+                              ctx=ctx,
                               feat_stride=config.network.RPN_FEAT_STRIDE, anchor_scales=config.network.ANCHOR_SCALES,
                               anchor_ratios=config.network.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
 
     # infer max shape
-    max_data_shape = [('data', (config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
+    max_data_shape = [('data', (
+    config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
     max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
     max_data_shape.append(('gt_boxes', (config.TRAIN.BATCH_IMAGES, 100, 5)))
-    max_data_shape = [('data', (config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
+    max_data_shape = [('data', (
+    config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
     max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
     max_data_shape.append(('gt_boxes', (config.TRAIN.BATCH_IMAGES, 100, 5)))
     print('providing maximum shape', max_data_shape, max_label_shape)
@@ -111,10 +130,11 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
 
     mod = MutableModule(sym, data_names=data_names, label_names=label_names,
                         logger=logger, context=ctx, max_data_shapes=[max_data_shape for _ in range(batch_size)],
-                        max_label_shapes=[max_label_shape for _ in range(batch_size)], fixed_param_prefix=fixed_param_prefix)
+                        max_label_shapes=[max_label_shape for _ in range(batch_size)],
+                        fixed_param_prefix=fixed_param_prefix)
 
     if config.TRAIN.RESUME:
-        mod._preload_opt_states = '%s-%04d.states'%(prefix, begin_epoch)
+        mod._preload_opt_states = '%s-%04d.states' % (prefix, begin_epoch)
 
     # decide training params
     # metric
@@ -132,7 +152,8 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     batch_end_callback = callback.Speedometer(train_data.batch_size, frequent=args.frequent)
     means = np.tile(np.array(config.TRAIN.BBOX_MEANS), 2 if config.CLASS_AGNOSTIC else config.dataset.NUM_CLASSES)
     stds = np.tile(np.array(config.TRAIN.BBOX_STDS), 2 if config.CLASS_AGNOSTIC else config.dataset.NUM_CLASSES)
-    epoch_end_callback = [mx.callback.module_checkpoint(mod, prefix, period=1, save_optimizer_states=True), callback.do_checkpoint(prefix, means, stds)]
+    epoch_end_callback = [mx.callback.module_checkpoint(mod, prefix, period=1, save_optimizer_states=True),
+                          callback.do_checkpoint(prefix, means, stds)]
     # decide learning rate
     base_lr = lr
     lr_factor = config.TRAIN.lr_factor
@@ -141,7 +162,8 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     lr = base_lr * (lr_factor ** (len(lr_epoch) - len(lr_epoch_diff)))
     lr_iters = [int(epoch * len(roidb) / batch_size) for epoch in lr_epoch_diff]
     print('lr', lr, 'lr_epoch_diff', lr_epoch_diff, 'lr_iters', lr_iters)
-    lr_scheduler = WarmupMultiFactorScheduler(lr_iters, lr_factor, config.TRAIN.warmup, config.TRAIN.warmup_lr, config.TRAIN.warmup_step)
+    lr_scheduler = WarmupMultiFactorScheduler(lr_iters, lr_factor, config.TRAIN.warmup, config.TRAIN.warmup_lr,
+                                              config.TRAIN.warmup_step)
     # optimizer
     optimizer_params = {'momentum': config.TRAIN.momentum,
                         'wd': config.TRAIN.wd,
@@ -162,9 +184,21 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
 
 def main():
     print('Called with argument:', args)
-    ctx = [mx.gpu(int(i)) for i in config.gpus.split(',')]
-    train_net(args, ctx, config.network.pretrained, config.network.pretrained_epoch, config.TRAIN.model_prefix,
-              config.TRAIN.begin_epoch, config.TRAIN.end_epoch, config.TRAIN.lr, config.TRAIN.lr_step)
 
+    # short for 'contents'
+    ctx = [mx.gpu(int(i)) for i in config.gpus.split(',')]
+
+    train_net(args,  # 参数
+              ctx,  #
+              config.network.pretrained,
+              config.network.pretrained_epoch,
+              config.TRAIN.model_prefix,
+              config.TRAIN.begin_epoch,
+              config.TRAIN.end_epoch,
+              config.TRAIN.lr,
+              config.TRAIN.lr_step)
+
+
+# Entrance
 if __name__ == '__main__':
     main()
