@@ -92,10 +92,16 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     roidb = merge_roidb(roidbs)
     roidb = filter_roidb(roidb, config)
     # load training data
-    train_data = AnchorLoader(feat_sym, roidb, config, batch_size=input_batch_size, shuffle=config.TRAIN.SHUFFLE,
+    train_data = AnchorLoader(feat_sym,
+                              roidb,
+                              config,
+                              batch_size=input_batch_size,
+                              shuffle=config.TRAIN.SHUFFLE,
                               ctx=ctx,
-                              feat_stride=config.network.RPN_FEAT_STRIDE, anchor_scales=config.network.ANCHOR_SCALES,
-                              anchor_ratios=config.network.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
+                              feat_stride=config.network.RPN_FEAT_STRIDE,
+                              anchor_scales=config.network.ANCHOR_SCALES,
+                              anchor_ratios=config.network.ANCHOR_RATIOS,
+                              aspect_grouping=config.TRAIN.ASPECT_GROUPING)
 
     # infer max shape
     max_data_shape = [('data', (
