@@ -163,7 +163,7 @@ config.TEST.NMS = 0.3
 config.TEST.max_per_image = 300
 
 # Test Model Epoch
-config.TEST.test_epoch = 7
+config.TEST.test_epoch = 100
 
 
 def update_config(config_file):

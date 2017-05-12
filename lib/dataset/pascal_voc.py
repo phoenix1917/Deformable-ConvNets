@@ -148,8 +148,8 @@ class PascalVOC(IMDB):
         size = tree.find('size')
         roi_rec['height'] = float(size.find('height').text)
         roi_rec['width'] = float(size.find('width').text)
-        #im_size = cv2.imread(roi_rec['image'], cv2.IMREAD_COLOR|cv2.IMREAD_IGNORE_ORIENTATION).shape
-        #assert im_size[0] == roi_rec['height'] and im_size[1] == roi_rec['width']
+        # im_size = cv2.imread(roi_rec['image'], cv2.IMREAD_COLOR|cv2.IMREAD_IGNORE_ORIENTATION).shape
+        # assert im_size[0] == roi_rec['height'] and im_size[1] == roi_rec['width']
 
         objs = tree.findall('object')
         if not self.config['use_diff']:

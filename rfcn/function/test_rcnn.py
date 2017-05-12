@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 # --------------------------------------------------------
 # Deformable Convolutional Networks
 # Copyright (c) 2016 by Contributors
@@ -20,9 +22,30 @@ from core.tester import Predictor, pred_eval
 from utils.load_model import load_param
 
 
-def test_rcnn(cfg, dataset, image_set, root_path, dataset_path,
-              ctx, prefix, epoch,
-              vis, ignore_cache, shuffle, has_rpn, proposal, thresh, logger=None, output_path=None):
+def test_rcnn(cfg, dataset, image_set, root_path, dataset_path, ctx, prefix, epoch,
+              vis, show, ignore_cache, shuffle, has_rpn, proposal, thresh, logger=None, output_path=None):
+    """
+    Test step.
+    :param cfg: configs
+    :param dataset: dataset name
+    :param image_set: test image set name
+    :param root_path: dataset root path
+    :param dataset_path: dataset path used for this term of test
+    :param ctx: gpus used for testing
+    :param prefix: final output path with a prefix of this particular testing
+    :param epoch: test epoch
+    :param vis: if visualization is needed (add '--vis' in file params)
+    :param show: whether to show result images immediately when needed visualization (add '--show' in file params)
+    :param ignore_cache: if 
+    :param shuffle: 
+    :param has_rpn: 
+    :param proposal: 
+    :param thresh: 
+    :param logger: 
+    :param output_path: 
+    :return: none
+    """
+
     if not logger:
         assert False, 'require a logger'
 
@@ -63,11 +86,23 @@ def test_rcnn(cfg, dataset, image_set, root_path, dataset_path,
         max_data_shape.append(('rois', (cfg.TEST.PROPOSAL_POST_NMS_TOP_N + 30, 5)))
 
     # create predictor
-    predictor = Predictor(sym, data_names, label_names,
-                          context=ctx, max_data_shapes=max_data_shape,
-                          provide_data=test_data.provide_data, provide_label=test_data.provide_label,
-                          arg_params=arg_params, aux_params=aux_params)
+    predictor = Predictor(sym,
+                          data_names,
+                          label_names,
+                          context=ctx,
+                          max_data_shapes=max_data_shape,
+                          provide_data=test_data.provide_data,
+                          provide_label=test_data.provide_label,
+                          arg_params=arg_params,
+                          aux_params=aux_params)
 
     # start detection
-    pred_eval(predictor, test_data, imdb, cfg, vis=vis, ignore_cache=ignore_cache, thresh=thresh, logger=logger)
-
+    pred_eval(predictor,
+              test_data,
+              imdb,
+              cfg,
+              vis=vis,
+              show=show,
+              ignore_cache=ignore_cache,
+              thresh=thresh,
+              logger=logger)

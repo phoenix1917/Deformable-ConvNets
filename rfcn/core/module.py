@@ -993,7 +993,7 @@ class MutableModule(BaseModule):
                 for callback in _as_list(epoch_end_callback):
                     callback(epoch, self.symbol, arg_params, aux_params)
 
-            #----------------------------------------
+            # ----------------------------------------
             # evaluation on validation set
             if eval_data:
                 res = self.score(eval_data, validation_metric,
@@ -1005,7 +1005,6 @@ class MutableModule(BaseModule):
 
             # end of 1 epoch, reset the data-iter for another epoch
             train_data.reset()
-
 
     def forward(self, data_batch, is_train=None):
         assert self.binded and self.params_initialized
@@ -1053,6 +1052,7 @@ class MutableModule(BaseModule):
     def get_outputs(self, merge_multi_context=True):
         assert self.binded and self.params_initialized
         return self._curr_module.get_outputs(merge_multi_context=merge_multi_context)
+
     def get_input_grads(self, merge_multi_context=True):
         assert self.binded and self.params_initialized and self.inputs_need_grad
         return self._curr_module.get_input_grads(merge_multi_context=merge_multi_context)
