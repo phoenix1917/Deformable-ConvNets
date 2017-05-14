@@ -22,6 +22,9 @@ from utils.PrefetchingIter import PrefetchingIter
 
 
 class Predictor(object):
+    """
+    
+    """
     def __init__(self, symbol, data_names, label_names,
                  context=mx.cpu(), max_data_shapes=None,
                  provide_data=None, provide_label=None,
@@ -38,6 +41,15 @@ class Predictor(object):
 
 
 def im_proposal(predictor, data_batch, data_names, scales):
+    """
+    
+    :param predictor: 
+    :param data_batch: 
+    :param data_names: 
+    :param scales: 
+    :return: 
+    """
+
     output_all = predictor.predict(data_batch)
 
     data_dict_all = [dict(zip(data_names, data_batch.data[i])) for i in xrange(len(data_batch.data))]
@@ -63,6 +75,7 @@ def generate_proposals(predictor, test_data, imdb, cfg, vis=False, thresh=0.):
     :param predictor: Predictor
     :param test_data: data iterator, must be non-shuffled
     :param imdb: image database
+    :param cfg:
     :param vis: controls visualization
     :param thresh: thresh for valid detections
     :return: list of detected boxes
@@ -102,7 +115,6 @@ def generate_proposals(predictor, test_data, imdb, cfg, vis=False, thresh=0.):
                 'data %.4fs net %.4fs' % (t1, t2 / test_data.batch_size)
             idx += 1
 
-
     assert len(imdb_boxes) == imdb.num_images, 'calculations not complete'
 
     # save results
@@ -124,6 +136,16 @@ def generate_proposals(predictor, test_data, imdb, cfg, vis=False, thresh=0.):
 
 
 def im_detect(predictor, data_batch, data_names, scales, cfg):
+    """
+    
+    :param predictor: 
+    :param data_batch: 
+    :param data_names: 
+    :param scales: 
+    :param cfg: 
+    :return: 
+    """
+
     output_all = predictor.predict(data_batch)
 
     data_dict_all = [dict(zip(data_names, idata)) for idata in data_batch.data]
@@ -152,19 +174,25 @@ def im_detect(predictor, data_batch, data_names, scales, cfg):
     return scores_all, pred_boxes_all, data_dict_all
 
 
-def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=None, ignore_cache=True):
+def pred_eval(predictor, test_data, imdb, cfg, vis=None, show=None, thresh=1e-3, logger=None, ignore_cache=False):
     """
     wrapper for calculating offline validation for faster data analysis
     in this example, all threshold are set by hand
     :param predictor: Predictor
     :param test_data: data iterator, must be non-shuffle
     :param imdb: image database
+    :param cfg:
     :param vis: controls visualization
+    :param show: show result images immediately, one by one
     :param thresh: valid detection threshold
+    :param logger:
+    :param ignore_cache:
     :return:
     """
 
     det_file = os.path.join(imdb.result_path, imdb.name + '_detections.pkl')
+
+    # if not chosen '--ignore_cache', it will not plot results on images
     if os.path.exists(det_file) and not ignore_cache:
         with open(det_file, 'rb') as fid:
             all_boxes = cPickle.load(fid)
@@ -173,7 +201,10 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=Non
             logger.info('evaluate detections: \n{}'.format(info_str))
         return
 
+    # 如果vis=False且test_data.shuffle=False，抛出异常
     assert vis or not test_data.shuffle
+
+    # 解析出测试图像的名称
     data_names = [k[0] for k in test_data.provide_data[0]]
 
     if not isinstance(test_data, PrefetchingIter):
@@ -194,6 +225,7 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=Non
     idx = 0
     data_time, net_time, post_time = 0.0, 0.0, 0.0
     t = time.time()
+
     for im_info, data_batch in test_data:
         t1 = time.time() - t
         t = time.time()
@@ -223,7 +255,31 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=Non
 
             if vis:
                 boxes_this_image = [[]] + [all_boxes[j][idx+delta] for j in range(1, imdb.num_classes)]
-                vis_all_detection(data_dict['data'].asnumpy(), boxes_this_image, imdb.classes, scales[delta], cfg)
+                if show:
+                    # 画出结果并显示
+                    vis_all_detection(data_dict['data'].asnumpy(),
+                                      boxes_this_image,
+                                      imdb.classes,
+                                      scales[delta],
+                                      cfg,
+                                      0.5)
+                else:
+                    vis_all_detection(data_dict['data'].asnumpy(),
+                                      boxes_this_image,
+                                      imdb.classes,
+                                      scales[delta],
+                                      cfg,
+                                      0.5)
+                    '''
+                    # 画出结果
+                    result_image = draw_all_detection(data_dict['data'].asnumpy(),
+                                                      boxes_this_image,
+                                                      imdb.classes,
+                                                      scales[delta],
+                                                      cfg)
+                    # 保存结果
+                    cv2.imwrite('path/to/dest', result_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                    '''
 
         idx += test_data.batch_size
         t3 = time.time() - t
@@ -245,16 +301,21 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=None, thresh=1e-3, logger=Non
 
 def vis_all_detection(im_array, detections, class_names, scale, cfg, threshold=1e-3):
     """
-    visualize all detections in one image
+    visualize all detections in one image and show immediately
     :param im_array: [b=1 c h w] in rgb
     :param detections: [ numpy.ndarray([[x1 y1 x2 y2 score]]) for j in classes ]
     :param class_names: list of names in imdb
     :param scale: visualize the scaled image
+    :param cfg:
+    :param threshold:
     :return:
     """
+
     import matplotlib.pyplot as plt
     import random
+
     im = image.transform_inverse(im_array, cfg.network.PIXEL_MEANS)
+    plt.figure(figsize=(16, 9), dpi=100)
     plt.imshow(im)
     for j, name in enumerate(class_names):
         if name == '__background__':
@@ -268,24 +329,30 @@ def vis_all_detection(im_array, detections, class_names, scale, cfg, threshold=1
                 continue
             rect = plt.Rectangle((bbox[0], bbox[1]),
                                  bbox[2] - bbox[0],
-                                 bbox[3] - bbox[1], fill=False,
-                                 edgecolor=color, linewidth=3.5)
+                                 bbox[3] - bbox[1],
+                                 fill=False,
+                                 edgecolor=color,
+                                 linewidth=3.5)
             plt.gca().add_patch(rect)
-            plt.gca().text(bbox[0], bbox[1] - 2,
+            plt.gca().text(bbox[0],
+                           bbox[1] - 2,
                            '{:s} {:.3f}'.format(name, score),
-                           bbox=dict(facecolor=color, alpha=0.5), fontsize=12, color='white')
-
+                           bbox=dict(facecolor=color, alpha=0.5),
+                           fontsize=12,
+                           color='white')
 
     plt.show()
 
 
 def draw_all_detection(im_array, detections, class_names, scale, cfg, threshold=1e-1):
     """
-    visualize all detections in one image
+    visualize all detections in one image, return visualized image without showing
     :param im_array: [b=1 c h w] in rgb
     :param detections: [ numpy.ndarray([[x1 y1 x2 y2 score]]) for j in classes ]
     :param class_names: list of names in imdb
     :param scale: visualize the scaled image
+    :param cfg:
+    :param threshold:
     :return:
     """
     import cv2
@@ -306,6 +373,10 @@ def draw_all_detection(im_array, detections, class_names, scale, cfg, threshold=
                 continue
             bbox = map(int, bbox)
             cv2.rectangle(im, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color=color, thickness=2)
-            cv2.putText(im, '%s %.3f' % (class_names[j], score), (bbox[0], bbox[1] + 10),
-                        color=color_white, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5)
+            cv2.putText(im,
+                        '%s %.3f' % (class_names[j], score),
+                        (bbox[0], bbox[1] + 10),
+                        color=color_white,
+                        fontFace=cv2.FONT_HERSHEY_COMPLEX,
+                        fontScale=0.5)
     return im

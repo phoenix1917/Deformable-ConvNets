@@ -33,19 +33,19 @@ from utils.load_model import load_param
 from utils.PrefetchingIter import PrefetchingIter
 from utils.lr_scheduler import WarmupMultiFactorScheduler
 
-# 设置系统信息
+# 设置环境参数
 os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '1'  # 用于卷积层的cudnn_tune的默认值。对于单GPU，设为1可以提升10%-15%的速度。
 os.environ['PYTHONUNBUFFERED'] = '1'  # 提供输出缓冲，保证stdout显示顺序
 # os.environ['MXNET_ENABLE_GPU_P2P'] = '0'  # 是否使用P2P通信（需要显卡支持）
 
 
-# 定义脚本参数
 def parse_args():
+    """定义脚本参数"""
     parser = argparse.ArgumentParser(description='Train R-FCN network')
     # general
     parser.add_argument('--cfg', help='experiment configure file name', required=True, type=str)
     args, rest = parser.parse_known_args()
-    # update config
+    # 从传入的yaml文件中读取设置写入config对象
     update_config(args.cfg)
 
     # training
@@ -55,9 +55,8 @@ def parse_args():
 
 # 传入脚本参数
 args = parse_args()
-
 # 将$DCN_ROOT/external/mxnet加入系统PATH
-# 若使用其他版本的mxnet，在config中设置MXNET_VERSION参数。
+# 若使用其他版本的mxnet，在yaml中设置MXNET_VERSION参数（对应config.MXNET_VERSION）。
 curr_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(curr_path, '../external/mxnet', config.MXNET_VERSION))
 
@@ -105,12 +104,14 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
                               aspect_grouping=config.TRAIN.ASPECT_GROUPING)
 
     # infer max shape
-    max_data_shape = [('data', (
-    config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
-    max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
-    max_data_shape.append(('gt_boxes', (config.TRAIN.BATCH_IMAGES, 100, 5)))
-    max_data_shape = [('data', (
-    config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
+    # max_data_shape = [('data',
+    #                    (config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]),
+    #                    max([v[1] for v in config.SCALES])))]
+    # max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
+    # max_data_shape.append(('gt_boxes', (config.TRAIN.BATCH_IMAGES, 100, 5)))
+    max_data_shape = [('data',
+                       (config.TRAIN.BATCH_IMAGES, 3, max([v[0] for v in config.SCALES]),
+                       max([v[1] for v in config.SCALES])))]
     max_data_shape, max_label_shape = train_data.infer_shape(max_data_shape)
     max_data_shape.append(('gt_boxes', (config.TRAIN.BATCH_IMAGES, 100, 5)))
     print('providing maximum shape', max_data_shape, max_label_shape)
@@ -135,8 +136,13 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     data_names = [k[0] for k in train_data.provide_data_single]
     label_names = [k[0] for k in train_data.provide_label_single]
 
-    mod = MutableModule(sym, data_names=data_names, label_names=label_names,
-                        logger=logger, context=ctx, max_data_shapes=[max_data_shape for _ in range(batch_size)],
+    # A mutable module is a module that supports variable input data.
+    mod = MutableModule(sym,
+                        data_names=data_names,
+                        label_names=label_names,
+                        logger=logger,
+                        context=ctx,
+                        max_data_shapes=[max_data_shape for _ in range(batch_size)],
                         max_label_shapes=[max_label_shape for _ in range(batch_size)],
                         fixed_param_prefix=fixed_param_prefix)
 
@@ -185,20 +191,28 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
         train_data = PrefetchingIter(train_data)
 
     # train
-    mod.fit(train_data, eval_metric=eval_metrics, epoch_end_callback=epoch_end_callback,
-            batch_end_callback=batch_end_callback, kvstore=config.default.kvstore,
-            optimizer='sgd', optimizer_params=optimizer_params,
-            arg_params=arg_params, aux_params=aux_params, begin_epoch=begin_epoch, num_epoch=end_epoch)
+    mod.fit(train_data,
+            eval_metric=eval_metrics,
+            epoch_end_callback=epoch_end_callback,
+            batch_end_callback=batch_end_callback,
+            kvstore=config.default.kvstore,
+            optimizer='sgd',
+            optimizer_params=optimizer_params,
+            arg_params=arg_params,
+            aux_params=aux_params,
+            begin_epoch=begin_epoch,
+            num_epoch=end_epoch)
 
 
 def main():
     print('Called with argument:', args)
 
-    # short for 'contents'
+    # 统计GPU个数
+    # ctx is short for 'contents'
     ctx = [mx.gpu(int(i)) for i in config.gpus.split(',')]
 
-    train_net(args,  # 参数
-              ctx,  #
+    train_net(args,
+              ctx,
               config.network.pretrained,
               config.network.pretrained_epoch,
               config.TRAIN.model_prefix,
