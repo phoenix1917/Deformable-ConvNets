@@ -13,35 +13,35 @@ import os
 HRSC_class_label = {
     '100000000': 'ship',
     '100100000': 'aircraft_carrier',
-    '100200000': 'warcraft',
-    '100300000': 'merchant_ship',
     '100100001': 'nimitz_class_aircraft_carrier',
     '100100002': 'enterprise_class_aircraft_carrier',
+    '100100003': 'kitty_hawk_class_aircraft_carrier',
+    '100100004': 'admiral_kuznetsov_aircraft_carrier',
+    '100100005': 'tarawa_class_amphibious_assault_ship',
+    '100100006': 'ford_class_aircraft_carriers',
+    '100100007': 'midway_class_aircraft_carrier',
+    '100100008': 'invincible_class_aircraft_carrier',
+    '100200000': 'warcraft',
     '100200001': 'arleigh_burke_class_destroyers',
     '100200002': 'whidbey_island_class_landing_craft',
     '100200003': 'perry_class_frigate',
     '100200004': 'sanantonio_class_amphibious_transport_dock',
     '100200005': 'ticonderoga_class_cruiser',
-    '100100003': 'kitty_hawk_class_aircraft_carrier',
-    '100100004': 'admiral_kuznetsov_aircraft_carrier',
     '100200006': 'abukuma_class_destroyer_escort',
     '100200007': 'austen_class_amphibious_transport_dock',
-    '100100005': 'tarawa_class_amphibious_assault_ship',
     '100200008': 'uss_blue_ridge_LCC_19',
-    '100300001': 'container_ship',
     '100200009': 'commander_ship_round_head_ox_tail',
+    '100200010': 'lute_style_warcraft',
+    '100200011': 'medical_ship',
+    '100300000': 'merchant_ship',
+    '100300001': 'container_ship',
     '100300002': 'car_carrier_round',
     '100300003': 'hovercraft',
     '100300004': 'yacht',
     '100300005': 'cargo_ship',
     '100300006': 'cruise_ship',
-    '100400000': 'submarine',
-    '100200010': 'lute_style_warcraft',
-    '100200011': 'medical_ship',
     '100300007': 'car_carrier_one_side_flat',
-    '100100006': 'ford_class_aircraft_carriers',
-    '100100007': 'midway_class_aircraft_carrier',
-    '100100008': 'invincible_class_aircraft_carrier',
+    '100400000': 'submarine',
 }
 
 
@@ -58,7 +58,9 @@ class LabelConductor:
         self.anno_path = os.path.join(self.root_path, 'Annotations')
         self.img_path = os.path.join(self.root_path, 'JPEGImages')
         self.testset_path = os.path.join(self.root_path, 'ImageSets', 'Main', 'test.txt')
-        self.trainset_path = os.path.join(self.root_path, 'ImageSets', 'Main', 'trainval.txt')
+        self.trainset_path = os.path.join(self.root_path, 'ImageSets', 'Main', 'train.txt')
+        self.valset_path = os.path.join(self.root_path, 'ImageSets', 'Main', 'val.txt')
+        self.trainvalset_path = os.path.join(self.root_path, 'ImageSets', 'Main', 'trainval.txt')
 
         # voc annotation structure
         self.voc = edict()
@@ -182,11 +184,11 @@ class LabelConductor:
 
         if isinstance(index, int):
             index = str(index)
-        filename = os.path.join(self.anno_path, index + '.xml')
-        if os.path.isfile(filename):
-            tree = ET.parse(filename)
+        file_path = os.path.join(self.anno_path, index + '.xml')
+        if os.path.isfile(file_path):
+            tree = ET.parse(file_path)
         else:
-            print 'Path \'{}\' is invalid.'.format(filename)
+            print 'Path \'{}\' is invalid.'.format(file_path)
             return
         # 清空缓存内容，防止新文件信息不全导致写入旧文件信息
         self.clear_all()
@@ -277,11 +279,11 @@ class LabelConductor:
 
         if isinstance(index, int):
             index = str(index)
-        filename = os.path.join(self.anno_path, index + '.xml')
-        if os.path.isfile(filename):
-            tree = ET.parse(filename)
+        file_path = os.path.join(self.anno_path, index + '.xml')
+        if os.path.isfile(file_path):
+            tree = ET.parse(file_path)
         else:
-            print 'Path \'{}\' is invalid.'.format(filename)
+            print 'Path \'{}\' is invalid.'.format(file_path)
             return
         objects = []
         objs = tree.findall('object')
@@ -448,15 +450,107 @@ class LabelConductor:
         """
         return
 
-    def count_dataset_objects(self, mode='test'):
+    def count_dataset_objects(self, dataset='', silence=True):
         """
-        计算数据集中的目标总数。
+        计算数据集中各类别的目标总数。
         读取测试/训练集index文件（.path/to/VOC/ImageSets/test.txt），根据文件解析相应标注文件。
-        :param mode: 选择计算哪部分的目标数量。
-                     可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
+        :param dataset: 选择计算哪部分的目标数量。
+                        可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
+                        默认为空，统计全部数据集。
+        :param silence: 控制是否隐藏统计过程的控制台输出
         :return: 
         """
         return
+
+    def count_label_objects(self, label, dataset='', silence=True):
+        """
+        计算数据集中指定label的目标数。
+        读取测试/训练集index文件（.path/to/VOC/ImageSets/test.txt），根据文件解析相应标注文件。
+        :param label: 需要统计的label名称
+        :param dataset: 选择计算哪部分的目标数量。
+                        可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
+                        默认为空，统计全部数据集。
+        :param silence: 控制是否隐藏统计过程的控制台输出
+        :return: label_count: 计算出的目标数量
+        """
+        import xml.etree.ElementTree as ET
+        label_count = 0  # label 计数
+
+        if isinstance(label, int):
+            label = str(label)
+
+        # 获得annotation文件名列表
+        anno_files = []
+        if dataset == '':
+            anno_files = os.listdir(self.anno_path)
+        elif dataset == 'test':
+            if os.path.isfile(self.testset_path):
+                test_list = open(self.testset_path)
+                for line in test_list:
+                    line = line.strip('\n')
+                    line = line.strip('\r')
+                    anno_files.append(line + '.xml')
+                test_list.close()
+            else:
+                print '\'{}\' test set file not exist.'.format(self.testset_path)
+                return -1
+        elif dataset == 'val':
+            if os.path.isfile(self.valset_path):
+                test_list = open(self.valset_path)
+                for line in test_list:
+                    line = line.strip('\n')
+                    line = line.strip('\r')
+                    anno_files.append(line + '.xml')
+                test_list.close()
+            else:
+                print '\'{}\' val set file not exist.'.format(self.valset_path)
+                return -1
+        elif dataset == 'train':
+            if os.path.isfile(self.trainset_path):
+                test_list = open(self.trainset_path)
+                for line in test_list:
+                    line = line.strip('\n')
+                    line = line.strip('\r')
+                    anno_files.append(line + '.xml')
+                test_list.close()
+            else:
+                print '\'{}\' train set file not exist.'.format(self.trainset_path)
+                return -1
+        elif dataset == 'trainval':
+            if os.path.isfile(self.trainvalset_path):
+                test_list = open(self.trainvalset_path)
+                for line in test_list:
+                    line = line.strip('\n')
+                    line = line.strip('\r')
+                    anno_files.append(line + '.xml')
+                test_list.close()
+            else:
+                print '\'{}\' trainval set file not exist.'.format(self.trainvalset_path)
+                return -1
+
+        if not silence:
+            print 'start to find label \'{}\':'.format(label)
+
+        for index in anno_files:
+            file_path = os.path.join(self.anno_path, index)
+            # 解析对应文件
+            if os.path.isfile(file_path):
+                tree = ET.parse(file_path)
+            else:
+                print 'Path \'{}\' is invalid.'.format(file_path)
+                return
+            local_count = 0  # 本文件中对应label的目标计数
+            # 从文件中解析所有object标签
+            objs = tree.findall('object')
+            for ix, obj in enumerate(objs):
+                if obj.find('name').text == label:
+                    local_count += 1
+                    label_count += 1
+            if not silence:
+                print 'found {} objects in file {}, totally {}.'.format(local_count, index, label_count)
+        if not silence:
+            print 'found {} \'{}\' objects in {} files.'.format(label_count, label, len(anno_files))
+        return label_count
 
     def missed_detection(self):
         """
