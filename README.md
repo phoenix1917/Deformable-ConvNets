@@ -23,7 +23,6 @@ This is an official implementation for [Deformable Convolutional Networks](https
   * The original implementation is based on our internal Caffe version on Windows. There are slight differences in the final accuracy and running time due to the plenty details in platform switch.
   * The code is tested on official [MXNet@(commit 62ecb60)](https://github.com/dmlc/mxnet/tree/62ecb60) with the extra operators for Deformable ConvNets.
   * We trained our model based on the ImageNet pre-trained [ResNet-v1-101](https://github.com/KaimingHe/deep-residual-networks) using a [model converter](https://github.com/dmlc/mxnet/tree/430ea7bfbbda67d993996d81c7fd44d3a20ef846/tools/caffe_converter). The converted model produces slightly lower accuracy (Top-1 Error on ImageNet val: 24.0% v.s. 23.6%).
-  * By now it only contains Deformable ConvNets with R-FCN. Deformable ConvNets with DeepLab will be released soon.
   * This repository used code from [MXNet rcnn example](https://github.com/dmlc/mxnet/tree/master/example/rcnn) and [mx-rfcn](https://github.com/giorking/mx-rfcn).
   
 ## License
@@ -62,6 +61,13 @@ If you find Deformable ConvNets useful in your research, please consider citing:
 | <sub>R-FCN, ResNet-v1-101 </sub>           | <sub>coco trainval</sub> | <sub>coco test-dev</sub> | 32.1 | 54.3    |   33.8  | 12.8  | 34.9  | 46.1  | 
 | <sub>Deformable R-FCN, ResNet-v1-101</sub> | <sub>coco trainval</sub> | <sub>coco test-dev</sub> | 35.7 | 56.8    | 38.3    | 15.2  | 38.8  | 51.5  |
 
+|                                   | training data              | testing data   | mIoU | time  |
+|-----------------------------------|----------------------------|----------------|------|-------|
+| DeepLab, ResNet-v1-101            | Cityscapes train           | Cityscapes val | 70.3 | 0.51s |
+| Deformable DeepLab, ResNet-v1-101 | Cityscapes train           | Cityscapes val | 75.2 | 0.52s |
+| DeepLab, ResNet-v1-101            | VOC 12 train (augmented) | VOC 12 val   | 70.7 | 0.08s |
+| Deformable DeepLab, ResNet-v1-101 | VOC 12 train (augmented) | VOC 12 val   | 75.9 | 0.08s |
+
 
 *Running time is counted on a single Maxwell Titan X GPU (mini-batch size is 1 in inference).*
 
@@ -91,18 +97,20 @@ git clone https://github.com/msracver/Deformable-ConvNets.git
 2. For Windows users, run ``cmd .\init.bat``. For Linux user, run `sh ./init.sh`. The scripts will build cython module automatically and create some folders.
 3. Copy operators in `./rfcn/operator_cxx` to `$(YOUR_MXNET_FOLDER)/src/operator/contrib` and recompile MXNet.
 4. Please install MXNet following the official guide of MXNet. For advanced users, you may put your Python packge into `./external/mxnet/$(YOUR_MXNET_PACKAGE)`, and modify `MXNET_VERSION` in `./experiments/rfcn/cfgs/*.yaml` to `$(YOUR_MXNET_PACKAGE)`. Thus you can switch among different versions of MXNet quickly.
-
+5. For Deeplab, we use the argumented VOC 2012 dataset. The argumented annotations are provided by [SBD](http://home.bharathh.info/pubs/codes/SBD/download.html) dataset. For convenience, we provide the converted PNG annotations and the lists of train/val images, please download them from [OneDrive](https://1drv.ms/u/s!Am-5JzdW2XHzhqMRhVImMI1jRrsxDg).
 
 ## Demo
 
-1. To use the demo with our trained model (on COCO trainval), please download the model manually from [OneDrive](https://1drv.ms/u/s!AoN7vygOjLIQqmE7XqFVLbeZDfVN), and put it under folder `model/`.
+1. To use the demo with our trained model (on COCO trainval), please download the model manually from [OneDrive](https://1drv.ms/u/s!Am-5JzdW2XHzhqMSjehIcCgAhvEAHw), and put it under folder `model/`.
 
 	Make sure it looks like this:
 	```
 	./model/rfcn_dcn_coco-0000.params
 	./model/rfcn_coco-0000.params
+	./model/deeplab_dcn_cityscapes-0000.params
+	./model/deeplab_cityscapes-0000.params
 	```
-2. To run the demo, run
+2. To run the R-FCN demo, run
 	```
 	python ./rfcn/demo.py
 	```
@@ -110,7 +118,14 @@ git clone https://github.com/msracver/Deformable-ConvNets.git
 	```
 	python ./rfcn/demo.py --rfcn_only
 	```
-	
+2. To run the DeepLab demo, run
+	```
+	python ./deeplab/demo.py
+	```
+	By default it will run Deformable Deeplab and gives several prediction results, to run DeepLab, use
+	```
+	python ./deeplab/demo.py --deeplab_only
+	```
 
 
 We will release the visualizaiton tool which visualizes the deformation effects soon.
@@ -118,7 +133,8 @@ We will release the visualizaiton tool which visualizes the deformation effects 
 
 ## Preparation for Training & Testing
 
-1. Please download COCO and VOC 2007+2012 dataset, and make sure it looks like this:
+For R-FCN\:
+1. Please download COCO and VOC 2007+2012 datasets, and make sure it looks like this:
 
 	```
 	./data/coco/
@@ -131,10 +147,30 @@ We will release the visualizaiton tool which visualizes the deformation effects 
 	./model/pretrained_model/resnet_v1_101-0000.params
 	```
 
+For DeepLab\:
+1. Please download Cityscapes and VOC 2012 datasets and make sure it looks like this:
+
+	```
+	./data/cityscapes/
+	./data/VOCdevkit/VOC2012/
+	```
+2. Please download argumented VOC 2012 annotations/image lists, and put the argumented annotations and the argumented train/val lists into:
+
+	```
+	./data/VOCdevkit/VOC2012/SegmentationClass/
+	./data/VOCdevkit/VOC2012/ImageSets/Main/
+	```
+   , Respectively.
+   
+2. Please download ImageNet-pretrained ResNet-v1-101 model manually from [OneDrive](https://1drv.ms/u/s!Am-5JzdW2XHzhqMEtxf1Ciym8uZ8sg), and put it under folder `./model`. Make sure it looks like this:
+	```
+	./model/pretrained_model/resnet_v1_101-0000.params
+	```
 ## Usage
 
-1. All of our experiment settings (GPU #, dataset, etc.) are kept in yaml config files at folder `./experiments/rfcn/cfgs`.
-2. Four config files have been provided so far, namely, R-FCN for COCO/VOC and Deformable R-FCN for COCO/VOC, respectively. We use 8 and 4 GPUs to train models on COCO and on VOC, respectively.
+1. All of our experiment settings (GPU #, dataset, etc.) are kept in yaml config files at folder `./experiments/rfcn/cfgs` and `./experiments/deeplab/cfgs/`.
+2. Eight config files have been provided so far, namely, R-FCN for COCO/VOC, Deformable R-FCN for COCO/VOC, Deeplab for Cityscapes/VOC and Deformable Deeplab for Cityscapes/VOC, respectively. We use 8 and 4 GPUs to train models on COCO and on VOC for R-FCN, respectively. For deeplab, we use 4 GPUs for all experiments.
+
 3. To perform experiments, run the python scripts with the corresponding config file as input. For example, to train and test deformable convnets on COCO with ResNet-v1-101, use the following command
     ```
     python experiments\rfcn\rfcn_end2end_train_test.py --cfg experiments\rfcn\cfgs\resnet_v1_101_coco_trainval_rfcn_dcn_end2end_ohem.yaml
