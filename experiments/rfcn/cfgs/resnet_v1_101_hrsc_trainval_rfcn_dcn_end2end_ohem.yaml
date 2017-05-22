@@ -1,6 +1,6 @@
 ---
 MXNET_VERSION: "mxnet"
-output_path: "./output/rfcn_dcn/hrsc-20170509"
+output_path: "./output/rfcn_dcn/hrsc-20170522"
 symbol: resnet_v1_101_rfcn_dcn
 gpus: '0'
 CLASS_AGNOSTIC: true
@@ -52,7 +52,7 @@ network:
   NUM_ANCHORS: 9
 
 dataset:
-  NUM_CLASSES: 33
+  NUM_CLASSES: 2
   dataset: PascalVOC
   dataset_path: "./data/VOCdevkit"
   image_set: 2007_trainval
@@ -68,7 +68,7 @@ TRAIN:
   # typically we will use 4000 warmup step for single GPU on VOC
   warmup_step: 4000
   begin_epoch: 0
-  end_epoch: 100
+  end_epoch: 200
   model_prefix: 'rfcn_voc'
   # whether resume training
   RESUME: false
@@ -153,5 +153,5 @@ TEST:
   PROPOSAL_MIN_SIZE: 0
   # RCNN nms
   NMS: 0.3
-  test_epoch: 100
+  test_epoch: 200
 

@@ -41,6 +41,8 @@ class PascalVOC(IMDB):
         self.devkit_path = devkit_path
         self.data_path = os.path.join(devkit_path, 'VOC' + year)
 
+        '''
+        # classes for recognition
         self.classes = ['__background__',  # always index 0
                         '100000000',  # ship
                         '100100000',  # aircraft_carrier
@@ -74,6 +76,10 @@ class PascalVOC(IMDB):
                         '100300005',  # cargo_ship
                         '100300006',  # cruise_ship
                         '100300007']  # car_carrier_one_side_flat
+        '''
+        # classes for detection
+        self.classes = ['__background__',  # always index 0
+                        'ship']            # one label for detection
 
         self.num_classes = len(self.classes)
         self.image_set_index = self.load_image_set_index()

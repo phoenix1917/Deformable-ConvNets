@@ -47,7 +47,7 @@ config.dataset.image_set = '2007_trainval'
 config.dataset.test_image_set = '2007_test'
 config.dataset.root_path = './data'
 config.dataset.dataset_path = './data/VOCdevkit'
-config.dataset.NUM_CLASSES = 33
+config.dataset.NUM_CLASSES = 2
 
 
 config.TRAIN = edict()
@@ -163,7 +163,7 @@ config.TEST.NMS = 0.3
 config.TEST.max_per_image = 300
 
 # Test Model Epoch
-config.TEST.test_epoch = 100
+config.TEST.test_epoch = 200
 
 
 def update_config(config_file):

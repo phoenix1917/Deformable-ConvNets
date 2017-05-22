@@ -381,32 +381,30 @@ class LabelConductor:
                 print '  </object>'
         print '</annotation>'
 
-    def print2file(self, index, output_path=''):
+    def print2file(self, index, output_path='', detection=False, silence=True):
         """
         将annotation文件内容输出到文件
         :param index: 文件名称（不带扩展名）
         :param output_path: 输出路径
+        :param detection: 是否输出成detection数据集（label只有ship）
+        :param silence: 控制是否隐藏控制台输出
         :return: None
         """
         if isinstance(index, int):
             index = str(index)
-        # 组合路径
+
         if len(output_path):
-            try:
-                outf = open(os.path.join(output_path, index + '.xml'), 'w')
-            except IOError:
-                print 'unable to open file \'{}\'.'.format(os.path.join(output_path, index + '.xml'))
+            if not os.path.isdir(output_path):
+                print 'path not exist: \'{}\''.format(output_path)
                 return
-            else:
-                print '\'{}.xml\' found:'.format(index + '.xml')
-        else:
-            try:
-                outf = open(index + '.xml', 'w')
-            except IOError:
-                print 'unable to open file \'{}\'.'.format(index + '.xml')
-                return
-            else:
-                print '\'{}.xml\' found:'.format(index + '.xml')
+
+        # 组合路径
+        try:
+            outf = open(os.path.join(output_path, index + '.xml'), 'w')
+        except IOError:
+            print 'annotation file not found in directory: \'{}\''.format(os.path.join(self.anno_path, index + '.xml'))
+            return
+
         # 输出到文件
         outf.write('<annotation>')
         outf.write('  <folder>{}</folder>'.format(self.voc.folder))
@@ -430,7 +428,12 @@ class LabelConductor:
         if len(self.voc.objects) > 0:
             for voc_object in self.voc.objects:
                 outf.write('  <object>')
-                outf.write('    <name>{}</name>'.format(voc_object.name))
+                if detection:
+                    # 检测数据集只需要ship label
+                    outf.write('    <name>ship</name>')
+                else:
+                    # 识别数据集只需要型号 label
+                    outf.write('    <name>{}</name>'.format(voc_object.name))
                 outf.write('    <pose>{}</pose>'.format(voc_object.pose))
                 outf.write('    <truncated>{}</truncated>'.format(voc_object.truncated))
                 outf.write('    <difficult>{}</difficult>'.format(voc_object.difficult))
@@ -442,21 +445,24 @@ class LabelConductor:
                 outf.write('    </bndbox>')
                 outf.write('  </object>')
         outf.write('</annotation>')
+        if not silence:
+            print '{}.xml proceeded.'.format(index)
 
-    def count_dataset_objects(self, dataset='', silence=True):
+    def count_dataset_objects(self, dataset='', labels=HRSC_class_label, silence=True):
         """
         计算数据集中各类别的目标总数。
         读取测试/训练集index文件（.path/to/VOC/ImageSets/test.txt），根据文件解析相应标注文件。
         :param dataset: 选择计算哪部分的目标数量。
                         可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
                         默认为空，统计全部数据集。
+        :param labels:  要统计的label集合（字典）
         :param silence: 控制是否隐藏统计过程的控制台输出
         :return: 以字典返回计算出的目标数量。若发生错误，返回-1。
         """
         import xml.etree.ElementTree as ET
 
         # 生成字典用于label统计
-        keys = HRSC_class_label.keys()
+        keys = labels.keys()
         label_count = {}
         for key in keys:
             label_count[key] = 0
@@ -487,6 +493,7 @@ class LabelConductor:
                 else:
                     # 若出现未被收录到class label的标签，收录并计数
                     label_count[obj.find('name').text] = 1
+                    print 'found new label \'{}\' in file \'{}\''.format(obj.find('name').text, index)
                     new_labels.append(obj.find('name').text)
         if not silence:
             if new_labels:
