@@ -277,9 +277,12 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=None, show=None, thresh=1e-3,
                                                       imdb.classes,
                                                       scales[delta],
                                                       cfg)
-                    # 保存结果
-                    cv2.imwrite('path/to/dest', result_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
                     '''
+                    # 保存bbox
+
+
+                    # 保存结果
+                    # cv2.imwrite('path/to/dest', result_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
         idx += test_data.batch_size
         t3 = time.time() - t
