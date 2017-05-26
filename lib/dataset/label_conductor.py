@@ -381,32 +381,30 @@ class LabelConductor:
                 print '  </object>'
         print '</annotation>'
 
-    def print2file(self, index, output_path=''):
+    def print2file(self, index, output_path='', detection=False, silence=True):
         """
         将annotation文件内容输出到文件
         :param index: 文件名称（不带扩展名）
         :param output_path: 输出路径
+        :param detection: 是否输出成detection数据集（label只有ship）
+        :param silence: 控制是否隐藏控制台输出
         :return: None
         """
         if isinstance(index, int):
             index = str(index)
-        # 组合路径
+
         if len(output_path):
-            try:
-                outf = open(os.path.join(output_path, index + '.xml'), 'w')
-            except IOError:
-                print 'unable to open file \'{}\'.'.format(os.path.join(output_path, index + '.xml'))
+            if not os.path.isdir(output_path):
+                print 'path not exist: \'{}\''.format(output_path)
                 return
-            else:
-                print '\'{}.xml\' found:'.format(index + '.xml')
-        else:
-            try:
-                outf = open(index + '.xml', 'w')
-            except IOError:
-                print 'unable to open file \'{}\'.'.format(index + '.xml')
-                return
-            else:
-                print '\'{}.xml\' found:'.format(index + '.xml')
+
+        # 组合路径
+        try:
+            outf = open(os.path.join(output_path, index + '.xml'), 'w')
+        except IOError:
+            print 'annotation file not found in directory: \'{}\''.format(os.path.join(self.anno_path, index + '.xml'))
+            return
+
         # 输出到文件
         outf.write('<annotation>')
         outf.write('  <folder>{}</folder>'.format(self.voc.folder))
@@ -430,7 +428,12 @@ class LabelConductor:
         if len(self.voc.objects) > 0:
             for voc_object in self.voc.objects:
                 outf.write('  <object>')
-                outf.write('    <name>{}</name>'.format(voc_object.name))
+                if detection:
+                    # 检测数据集只需要ship label
+                    outf.write('    <name>ship</name>')
+                else:
+                    # 识别数据集只需要型号 label
+                    outf.write('    <name>{}</name>'.format(voc_object.name))
                 outf.write('    <pose>{}</pose>'.format(voc_object.pose))
                 outf.write('    <truncated>{}</truncated>'.format(voc_object.truncated))
                 outf.write('    <difficult>{}</difficult>'.format(voc_object.difficult))
@@ -442,25 +445,69 @@ class LabelConductor:
                 outf.write('    </bndbox>')
                 outf.write('  </object>')
         outf.write('</annotation>')
+        if not silence:
+            print '{}.xml proceeded.'.format(index)
 
-    def load_bbox(self):
-        """
-        解析测试部分输出的bounding box
-        :return: 
-        """
-        return
-
-    def count_dataset_objects(self, dataset='', silence=True):
+    def count_dataset_objects(self, dataset='', labels=HRSC_class_label, silence=True):
         """
         计算数据集中各类别的目标总数。
         读取测试/训练集index文件（.path/to/VOC/ImageSets/test.txt），根据文件解析相应标注文件。
         :param dataset: 选择计算哪部分的目标数量。
                         可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
                         默认为空，统计全部数据集。
+        :param labels:  要统计的label集合（字典）
         :param silence: 控制是否隐藏统计过程的控制台输出
-        :return: 
+        :return: 以字典返回计算出的目标数量。若发生错误，返回-1。
         """
-        return
+        import xml.etree.ElementTree as ET
+
+        # 生成字典用于label统计
+        keys = labels.keys()
+        label_count = {}
+        for key in keys:
+            label_count[key] = 0
+
+        # 获得annotation文件名列表
+        anno_files = self.get_anno_file_list(dataset)
+        if anno_files == -1:
+            print 'dataset invalid'
+            return -1
+
+        # 收录未被class label记录的标签
+        new_labels = []
+
+        # 解析每个文件
+        for index in anno_files:
+            file_path = os.path.join(self.anno_path, index)
+            # 解析对应文件
+            if os.path.isfile(file_path):
+                tree = ET.parse(file_path)
+            else:
+                print 'path \'{}\' is invalid.'.format(file_path)
+                return -1
+            # 从文件中解析所有object标签
+            objs = tree.findall('object')
+            for ix, obj in enumerate(objs):
+                if obj.find('name').text in label_count.keys():
+                    label_count[obj.find('name').text] += 1
+                else:
+                    # 若出现未被收录到class label的标签，收录并计数
+                    label_count[obj.find('name').text] = 1
+                    print 'found new label \'{}\' in file \'{}\''.format(obj.find('name').text, index)
+                    new_labels.append(obj.find('name').text)
+        if not silence:
+            if new_labels:
+                for key in label_count:
+                    if key not in new_labels:
+                        print '\'{}\': {}'.format(key, label_count[key])
+                print 'new labels detected: '
+                for key in label_count:
+                    if key in new_labels:
+                        print '\'{}\': {}'.format(key, label_count[key])
+            else:
+                for key in label_count:
+                    print '\'{}\': {}'.format(key, label_count[key])
+        return label_count
 
     def count_label_objects(self, label, dataset='', silence=True):
         """
@@ -471,7 +518,7 @@ class LabelConductor:
                         可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
                         默认为空，统计全部数据集。
         :param silence: 控制是否隐藏统计过程的控制台输出
-        :return: label_count: 计算出的目标数量
+        :return: 计算出的目标数量。若发生错误，返回-1。
         """
         import xml.etree.ElementTree as ET
         label_count = 0  # label 计数
@@ -480,6 +527,43 @@ class LabelConductor:
             label = str(label)
 
         # 获得annotation文件名列表
+        anno_files = self.get_anno_file_list(dataset)
+        if anno_files == -1:
+            print 'dataset invalid'
+            return -1
+
+        if not silence:
+            print 'start to find label \'{}\':'.format(label)
+
+        for index in anno_files:
+            file_path = os.path.join(self.anno_path, index)
+            # 解析对应文件
+            if os.path.isfile(file_path):
+                tree = ET.parse(file_path)
+            else:
+                print 'path \'{}\' is invalid.'.format(file_path)
+                return -1
+            local_count = 0  # 本文件中对应label的目标计数
+            # 从文件中解析所有object标签
+            objs = tree.findall('object')
+            for ix, obj in enumerate(objs):
+                if obj.find('name').text == label:
+                    local_count += 1
+                    label_count += 1
+            if not silence:
+                print 'found {} objects in file {}, totally {}.'.format(local_count, index, label_count)
+        if not silence:
+            print 'found {} \'{}\' objects in {} files.'.format(label_count, label, len(anno_files))
+        return label_count
+
+    def get_anno_file_list(self, dataset=''):
+        """
+        根据数据集返回所有标注文件名列表
+        :param dataset: 选择计算哪部分的目标数量。
+                        可选：测试集'test'，训练集'train'，验证集'val'，训练和验证集'trainval'。
+                        默认为空，统计全部数据集。
+        :return: 返回获取到的所有标注文件名列表。若发生错误，返回-1。
+        """
         anno_files = []
         if dataset == '':
             anno_files = os.listdir(self.anno_path)
@@ -527,34 +611,22 @@ class LabelConductor:
             else:
                 print '\'{}\' trainval set file not exist.'.format(self.trainvalset_path)
                 return -1
+        else:
+            print '\'{}\' doesn\'t match any valid dataset, please check.'.format(dataset)
+            return -1
+        return anno_files
 
-        if not silence:
-            print 'start to find label \'{}\':'.format(label)
-
-        for index in anno_files:
-            file_path = os.path.join(self.anno_path, index)
-            # 解析对应文件
-            if os.path.isfile(file_path):
-                tree = ET.parse(file_path)
-            else:
-                print 'Path \'{}\' is invalid.'.format(file_path)
-                return
-            local_count = 0  # 本文件中对应label的目标计数
-            # 从文件中解析所有object标签
-            objs = tree.findall('object')
-            for ix, obj in enumerate(objs):
-                if obj.find('name').text == label:
-                    local_count += 1
-                    label_count += 1
-            if not silence:
-                print 'found {} objects in file {}, totally {}.'.format(local_count, index, label_count)
-        if not silence:
-            print 'found {} \'{}\' objects in {} files.'.format(label_count, label, len(anno_files))
-        return label_count
+    def load_bbox(self):
+        """
+        解析测试部分输出的bounding box
+        :return: 
+        """
+        pass
 
     def missed_detection(self):
         """
         计算漏检和错检数及漏检、错检率。
         :return: 
         """
-        return
+        pass
+

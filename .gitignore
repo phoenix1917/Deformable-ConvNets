@@ -92,3 +92,5 @@ output
 model
 
 .db
+!/experiments/rfcn/cfgs/resnet_v1_101_hrsc_trainval_rfcn_dcn_end2end_ohem.yaml
+/rfcn/test_label_conductor.py
